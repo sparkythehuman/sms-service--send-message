@@ -7,6 +7,7 @@ from pytz import timezone
 from twilio.rest import Client
 
 
+
 def get_sms_items_from_db(date_range, status='queued'):
     dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table(os.environ['TABLE_NAME'])
@@ -53,7 +54,7 @@ def update_sms_item(id, twilio_sid, status='sent'):
 def handle():
     # five minutes ago to now
     date_range = (
-        (datetime.now(tz=timezone('America/Denver')).isoformat() - timedelta(minutes=5)).isoformat(),
+        (datetime.now(tz=timezone('America/Denver')) - timedelta(minutes=5)).isoformat(),
         datetime.now(tz=timezone('America/Denver')).isoformat()
     )
     for sms_data in get_sms_items_from_db(date_range):
