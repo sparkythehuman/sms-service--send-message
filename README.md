@@ -9,7 +9,6 @@ Triggers from a CloudWatch Event and sends a Twilio SMS message.
 
 ### Environment Variables
 
-- `TABLE_NAME`: AWS DynamoDB table name
 - `TWILIO_ACCOUNT_SID`: Your Account SID from twilio.com/console 
 - `TWILIO_AUTH_TOKEN`: Your Auth Token from twilio.com/console
 

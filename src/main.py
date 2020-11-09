@@ -9,19 +9,19 @@ from twilio.rest import Client
 
 dynamodb = boto3.resource('dynamodb')
 message = dynamodb.Table('message')
-phone_number = dynamodb.Table('phone_number')
+contact = dynamodb.Table('contact')
 
 def _get_queued_messages(date_range, status='queued'):
     response = message.query(
-        IndexName='StatusSentAtIndex',
+        IndexName='send_at-status-index',
         KeyConditionExpression=Key('status').eq(status) & Key('send_at').between(date_range[0], date_range[1])
     )
     return response['Items']
 
 
 def _get_phone_numbers_from_contact_list(contact_list_id):
-    response = phone_number.query(
-        IndexName='ContactListIndex',
+    response = contact.query(
+        IndexName='contact_list_id-index',
         KeyConditionExpression=Key('contact_list_id').eq(contact_list_id)
     )
     
