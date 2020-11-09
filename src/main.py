@@ -7,32 +7,41 @@ from pytz import timezone
 from twilio.rest import Client
 
 
+dynamodb = boto3.resource('dynamodb')
+message = dynamodb.Table('message')
+phone_number = dynamodb.Table('phone_number')
 
-def get_sms_items_from_db(date_range, status='queued'):
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table(os.environ['TABLE_NAME'])
-    response = table.query(
-        KeyConditionExpression=Key('status').eq(status)& Key('send_at').between(date_range[0], date_range[1])
+def _get_queued_messages(date_range, status='queued'):
+    response = message.query(
+        IndexName='StatusSentAtIndex',
+        KeyConditionExpression=Key('status').eq(status) & Key('send_at').between(date_range[0], date_range[1])
     )
+    return response['Items']
+
+
+def _get_phone_numbers_from_contact_list(contact_list_id):
+    response = phone_number.query(
+        IndexName='ContactListIndex',
+        KeyConditionExpression=Key('contact_list_id').eq(contact_list_id)
+    )
+    
     return response['Items']
     
 
-def send_message(data):
+def _send_message(**kwargs):
     twilio = Client(os.environ['TWILIO_ACCOUNT_SID'], os.environ['TWILIO_AUTH_TOKEN'])
-    message = twilio.messages\
+    sms = twilio.messages\
         .create(
-            body=data['message'], 
-            from_=data['from'],
-            to=data['to']
+            body=kwargs['body'], 
+            from_=os.environ['FROM_PHONE_NUMBER'],
+            to=kwargs['to']
         )
     
-    return message.sid
+    return sms.sid
 
 
-def update_sms_item(id, twilio_sid, status='sent'): 
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table(os.environ['TABLE_NAME'])
-    table.update_item(
+def _update_sms_item(id, twilio_sid, status='sent'): 
+    message.update_item(
       Key={'id': id},
       AttributeUpdates={
         'processed_at': {
@@ -57,6 +66,10 @@ def handle():
         (datetime.now(tz=timezone('America/Denver')) - timedelta(minutes=5)).isoformat(),
         datetime.now(tz=timezone('America/Denver')).isoformat()
     )
-    for sms_data in get_sms_items_from_db(date_range):
-        twilio_sid = send_message(sms_data)
-        update_sms_item(sms_data['id'], twilio_sid)
+    for queued_message in _get_queued_messages(date_range):
+        for to_number in _get_phone_numbers_from_contact_list(queued_message['contact_list_id']):
+            twilio_sid = _send_message(
+                body=queued_message['message'], 
+                to=to_number['phone_number']
+            )
+            _update_sms_item(queued_message['id'], twilio_sid)
