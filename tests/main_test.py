@@ -10,15 +10,14 @@ from unittest.mock import ANY
 #TODO: fix the dates, just for good measure
 
 @pytest.fixture()
-def mock_table(mocker):
-    mock_table = mocker.Mock()
-    mock_table.query.return_value = {
+def mock_message_table(mocker):
+    mock_message_table = mocker.Mock()
+    mock_message_table.query.return_value = {
         'Items' : [
             {
             'id': 'SMSXXXXXXXXXXXXXXXX',
+            'contact_list_id': 'CLXXXXXXXXXXXXXXXX',
             'status': 'queued',
-            'from': '+15058675309',
-            'to': '+12813308004',
             'send_at': '2020-01-01 12:30:00',
             'message': 'Join Earth\'s mightiest heroes, like Kevin Bacon.',
             'created_at': '2020-10-17T11:01:36.650877-06:00'
@@ -27,13 +26,36 @@ def mock_table(mocker):
         'Count': 123,
         'ScannedCount': 123
     } 
-    yield mock_table
+    yield mock_message_table
+
+
+@pytest.fixture()
+def mock_contact_table(mocker):
+    mock_contact_table = mocker.Mock()
+    mock_contact_table.query.return_value = {
+        'Items' : [
+            {
+            'id': 'CPHXXXXXXXXXXXXXXXX',
+            'contact_list_id': 'CLXXXXXXXXXXXXXXXX',
+            'name': 'Michael Scott',
+            'phone_number': '5551234567',
+            'username': 'dwallace-at-dundermifflin.com',
+            'created_at': '2020-10-17T11:01:36.650877-06:00'
+            },
+        ],
+        'Count': 123,
+        'ScannedCount': 123
+    } 
+    yield mock_message_table
 
 
 @pytest.fixture
-def mock_dynamodb(mocker, mock_table):
+def mock_dynamodb(mocker, mock_message_table, mock_contact_table):
     mock_dynamodb = mocker.Mock()
-    mock_dynamodb.Table.return_value = mock_table
+    mock_dynamodb.Table.side_effect = [
+        mock_message_table,
+        mock_contact_table
+    ]
     yield mock_dynamodb
 
 
@@ -94,41 +116,3 @@ def mock_create_message(mocker, mock_twilio_create_message_response):
     mock_create_message = mocker.patch('src.main.Client.messages')
     mock_create_message.create.return_value = mock_twilio_create_message_response
     yield mock_create_message
-
-
-
-def test_handle(mocker, mock_dynamodb, mock_now, mock_create_message):
-    handle()
-  
-    assert mock_create_message.mock_calls == [
-        mocker.call.create(
-            body="Join Earth's mightiest heroes, like Kevin Bacon.", 
-            from_='+15058675309', 
-            to='+12813308004'
-        )
-    ]
-
-    assert mock_dynamodb.mock_calls == [
-        mocker.call.Table('test-table'),
-        mocker.call.Table().query(KeyConditionExpression=ANY),
-        mocker.call.Table('test-table'),
-        mocker.call.Table().update_item(
-            Key={
-                'id': 'SMSXXXXXXXXXXXXXXXX'
-            },
-            AttributeUpdates={
-                'processed_at': {
-                    'Value': mock_now.isoformat(),
-                    'Action': 'PUT'
-                },
-                'status': {
-                    'Value': 'sent',
-                    'Action': 'PUT'
-                },
-                'twilio_sid': {
-                    'Value': 'SMXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-                    'Action': 'PUT'
-                }
-            }
-        ),
-    ]
