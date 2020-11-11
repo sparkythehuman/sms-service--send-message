@@ -60,7 +60,7 @@ def _update_sms_item(id, twilio_sid, status='sent'):
     )
 
 
-def handle():
+def handle(event, context):
     # five minutes ago to now
     date_range = (
         (datetime.now(tz=timezone('America/Denver')) - timedelta(minutes=5)).isoformat(),
