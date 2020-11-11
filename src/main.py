@@ -13,7 +13,7 @@ contact = dynamodb.Table('contact')
 
 def _get_queued_messages(date_range, status='queued'):
     response = message.query(
-        IndexName='send_at-status-index',
+        IndexName='status-send_at-index',
         KeyConditionExpression=Key('status').eq(status) & Key('send_at').between(date_range[0], date_range[1])
     )
     return response['Items']
