@@ -16,6 +16,7 @@ def _get_queued_messages(date_range, status='queued'):
         IndexName='status-send_at-index',
         KeyConditionExpression=Key('status').eq(status) & Key('send_at').between(date_range[0], date_range[1])
     )
+
     return response['Items']
 
 
@@ -63,8 +64,13 @@ def _update_sms_item(id, twilio_sid, status='sent'):
 def handle(event, context):
     # five minutes ago to now
     date_range = (
-        (datetime.now(tz=timezone('America/Denver')) - timedelta(minutes=5)).isoformat(),
-        datetime.now(tz=timezone('America/Denver')).isoformat()
+        (datetime.now(tz=timezone('America/Denver')).replace(microsecond=0) - timedelta(minutes=5))\
+            # .replace(tzinfo=None)\
+            .isoformat(),
+        datetime.now(tz=timezone('America/Denver'))\
+            .replace(microsecond=0)\
+            # .replace(tzinfo=None)\
+            .isoformat()
     )
     for queued_message in _get_queued_messages(date_range):
         for to_number in _get_phone_numbers_from_contact_list(queued_message['contact_list_id']):

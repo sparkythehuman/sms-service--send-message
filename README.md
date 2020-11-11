@@ -11,6 +11,7 @@ Triggers from a CloudWatch Event and sends a Twilio SMS message.
 
 - `TWILIO_ACCOUNT_SID`: Your Account SID from twilio.com/console 
 - `TWILIO_AUTH_TOKEN`: Your Auth Token from twilio.com/console
+- `FROM_PHONE_NUMBER`: The phone number from which to send the message 
 
 ## Contributing
 
